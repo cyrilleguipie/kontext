@@ -1,0 +1,21 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: kontext-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kontext
+      POSTGRES_USER: kontext
+      POSTGRES_PASSWORD: ${KONTEXT_DB_PASSWORD:-kontext_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kontext -d kontext"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
