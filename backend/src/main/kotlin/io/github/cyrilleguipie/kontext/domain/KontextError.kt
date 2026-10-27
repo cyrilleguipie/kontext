@@ -57,4 +57,9 @@ sealed interface KontextError {
 
         data class Network(override val message: String, val cause: Throwable? = null) : AtlassianError
     }
+
+    class Exception(
+        val error: KontextError,
+        cause: Throwable? = null,
+    ) : RuntimeException(error.message, cause)
 }

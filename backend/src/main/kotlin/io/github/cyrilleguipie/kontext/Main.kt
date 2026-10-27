@@ -52,7 +52,7 @@ fun main() =
 
             resource({
                 val server =
-                    embeddedServer(Netty, port = config.server.port) {
+                    this@SuspendApp.embeddedServer(Netty, port = config.server.port) {
                         module(config, dataSource)
                     }
                 server.start(wait = false)
