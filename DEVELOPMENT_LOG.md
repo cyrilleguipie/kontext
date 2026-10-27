@@ -1,0 +1,78 @@
+# Development Log
+
+This file records implementation work completed by the coding assistant so the project can be resumed across sessions.
+
+## 2026-10-27
+
+- Added the RAG engine and `POST /api/chat` SSE endpoint with retrieved source citations and client-supplied chat history.
+- Added the Vue chat interface, Docker images for the backend and UI, and a three-service Docker Compose stack.
+- Wired database and LLM health checks, updated setup documentation, and clarified connector work that is still planned.
+- Confirmed backend compilation, ktlint, Vue production build, Compose configuration, and whitespace checks. Tests were not run.
+- Added authenticated manual ingestion (`POST /api/admin/documents`), document statistics, and deletion endpoints. Admin access is disabled unless `KONTEXT_ADMIN_TOKEN` is configured.
+- Added deterministic content hashes, overlap chunking, batch embeddings, idempotent re-ingestion, and atomic document/chunk replacement in PostgreSQL.
+- Added the `manual` document source through Flyway migration V2 and documented the admin workflow.
+- Added a UI form for indexing a manual document; the admin token is held in page memory and not persisted.
+- Added a source connector SPI, local Markdown/text directory connector, and periodic sync worker. Changed files are re-embedded; deleted files are removed after a successful scan that sees at least one document.
+- Added a same-origin source preview route with path containment checks so citations to local files open from the browser safely.
+- Added Jira Cloud/Data Center and Confluence Cloud/Data Center connectors with API pagination, authentication, document metadata, and periodic sync configuration.
+- Added Notion and GitBook connectors with paginated API retrieval, recursive Notion block rendering, credential configuration, and periodic sync jobs.
+- Added `jira`, `confluence`, `notion`, and `gitbook` document-source support and a Flyway migration for the new source values.
+- Updated the README connector matrix and roadmap to distinguish completed ingestion integrations from the planned connector dashboard and remaining tiers.
+- Added authenticated connector listing, in-memory last-run status, per-connector sync status, and an on-demand sync endpoint; scheduled and manual syncs share the same lock and status tracking.
+- Added a Sources panel to the chat UI for inspecting connector outcomes and starting a sync, reusing the in-memory admin token field.
+- Updated README API instructions and roadmap to reflect the connector sync controls.
+- Verification for connector controls: Kotlin compilation and ktlint passed; Vue production build, Compose configuration, and `git diff --check` passed. Tests were not run.
+- Added Flyway V5 and PostgreSQL persistence for connector sync status, including recovery of a run marked active when the server restarts.
+- Updated admin status documentation to describe persistence and interrupted-run recovery.
+- Verification for persisted sync status: Kotlin compilation and ktlint passed; Compose configuration and `git diff --check` passed. Tests and database migration execution were not run.
+- Added a GitHub connector for allowlisted repositories, indexing repository READMEs and all issues/pull requests with labels, author, state, and pagination.
+- Added GitHub token, API base URL, repository allowlist, sync interval configuration, Docker Compose environment wiring, and Flyway V6 source support.
+- Updated the README connector matrix and setup guide for GitHub. GitHub discussions, wikis, comments, and GitLab/Linear/Backstage remain future scope.
+- Verification for GitHub integration: Kotlin compilation and ktlint passed; Vue production build, Compose configuration, and `git diff --check` passed. Tests and live GitHub API sync were not run.
+- Added local PDF and DOCX text extraction through Apache Tika, with 20 MiB per-file and 250,000-character extraction limits; citation preview now returns extracted text for those files. Image-only PDF OCR is not included.
+- Expanded local sync documentation and `.env.example` comments to cover the supported formats and extraction limits.
+- Resolved Tika Core and only the PDF/Microsoft parser modules to keep dependencies focused on the added formats.
+- Verification for local PDF/DOCX ingestion: Kotlin compilation and ktlint passed; Vue production build, Compose configuration, and `git diff --check` passed. Tests and fixture extraction were not run.
+- Began frontend conversation history with pure conversation-domain transformations, an explicit browser-storage port/adapter returning typed results, and a Vue composable isolating browser effects from chat rendering.
+- Added selection, deletion, clear-history controls, bounded browser-local retention (12 conversations, 30 messages each), and visible storage errors. No admin token is persisted.
+- Added a typed `Result`-based HTTP/SSE adapter for chat, manual ingestion, and connector status requests, moving transport parsing and error conversion out of the Vue component.
+- Documented browser-local conversation retention, request-context behavior, and the clear-history control.
+- Fixed Kotlin compilation issues in the new config and Notion connector code during verification.
+- Verification for this continuation: Kotlin compile and ktlint passed; Vue production build, Docker Compose config, and `git diff --check` passed. Tests were not run.
+- Refactored Kotlin startup, chat/admin routes, connector sync, and Notion block rendering to reduce complexity and make failure handling more specific while preserving cancellation behavior.
+- Split admin route concerns into focused route/auth files, used explicit result/error paths for request validation and connector sync outcomes, and simplified connector pagination and repository transaction cleanup.
+- Enabled strict unused-symbol checks in the Vue TypeScript app and removed the resulting unused imports/variables.
+- Verified `:backend:compileKotlin`, `:backend:ktlintCheck`, and `:backend:detekt` all pass. SonarQube/SonarCloud configuration or scanner is not present in the repository, so no Sonar quality gate was run. Tests were not run.
+- Added the GitLab connector for allowlisted projects, including paginated issues, merge requests, and wiki pages; wired token/API URL/interval configuration, startup scheduling, Compose, environment example, and Flyway V7 source support.
+- Added URL construction for GitLab wiki pages when the API omits `web_url`, and mapped authentication, rate-limit, and other HTTP failures to typed domain errors.
+- Updated README connector setup and marked frontend roadmap phase complete based on the shipped chat, history, manual ingestion, and sync UI.
+- GitLab continuation verification: Kotlin compilation, ktlint, and detekt passed. The first detekt pass caught line-length violations that were fixed before the passing run. Tests, live GitLab API access, and database migration execution were not run.
+- Added Linear GraphQL synchronization for workspace issues, projects, and documents with Relay cursor pagination, archived records, bounded document text, cursor-loop protection, and typed API/authentication failures. GraphQL errors fail the snapshot even when returned with HTTP 200.
+- Wired Linear personal API key, endpoint, and interval through validated configuration, startup scheduling, Compose, `.env.example`, Flyway V8, and README.
+- Extended Linear synchronization to include paginated document content and updated the README connector matrix and setup description.
+- Linear API behavior was checked against the official GraphQL and pagination documentation. Kotlin compilation, ktlint, detekt, Compose configuration, and `git diff --check` passed; tests, live Linear API sync, and database migration execution were not run.
+- Added Zendesk Help Center article ingestion with Basic `email/token:api_token` authentication, cursor pagination, HTML-to-text conversion, and typed authentication/rate-limit/HTTP/pagination errors.
+- Restricted Zendesk indexing to published articles without user-segment restrictions, validated pagination links against the configured Zendesk origin before reusing credentials, and capped indexed article text at 250,000 characters.
+- Wired Zendesk credentials, base URL, and interval through validated config, scheduler, Compose, `.env.example`, Flyway V9, and README. Verification: Kotlin compile, ktlint, detekt, Compose config, and `git diff --check` passed; no tests, live Zendesk sync, or DB migration execution.
+- Added an Intercom article connector using the documented `/articles` API with Bearer authentication, explicit API-version header, bounded page traversal, and typed auth/rate-limit/HTTP failures.
+- Restricted indexing to published articles whose Help Center audience is `everyone`, parsed article Markdown/HTML, and capped extracted content. Intercom conversations remain outside this connector.
+- Wired Intercom token/version/API URL/interval through validated config, scheduler, Compose, `.env.example`, Flyway V10, and README. Implementation follows the official Intercom article list/schema docs. Kotlin compilation, ktlint, detekt, Compose config, and `git diff --check` passed; no tests, live API sync, or database migration execution.
+- Added a Freshdesk Help Center connector for published articles in folders visible to all users. It traverses solution categories and nested folders, excludes drafts and folders restricted to logged-in users, agents, selected companies, segments, or bots, strips HTML, bounds content, and uses API-key Basic auth with paginated requests and typed failures.
+- Wired Freshdesk HTTPS origin/API key/interval through validated config, scheduler, Docker Compose, `.env.example`, Flyway V11, and README. Freshdesk's official API documentation was checked for auth, pagination, article status, folder visibility values, and endpoints. Kotlin compilation, ktlint, detekt, Compose configuration, and `git diff --check` passed; tests, live API sync, and DB migration execution were not run. Sonar scanner configuration is not present in the repository.
+- Changed Freshdesk category, folder, and article pagination to emit records page by page rather than collecting an entire collection in memory. Added a connector development guide covering privacy, snapshot cleanup, typed errors, deterministic mapping, pagination, and integration steps; corrected README setup references and the actual Compose database service name.
+- Verified `:backend:compileKotlin`, `:backend:ktlintCheck`, and `:backend:detekt` after the streaming change; the Vue production build, Compose configuration, and `git diff --check` also passed. Tests and live connector sync were not run.
+- Advanced deployment hardening: Compose now requires an explicitly configured database password instead of a known fallback and binds DB/API/UI ports to loopback; removed Ktor's wildcard CORS policy; added Nginx security headers, a 2 MiB request body cap, and proxy forwarding headers; documented TLS/reverse-proxy, secret, local-file, and backup requirements.
+- Updated the README setup/roadmap for the required DB secret and loopback defaults. Kotlin compilation, ktlint, detekt, Vue production build, Compose configuration with a supplied validation-only secret, and `git diff --check` passed; Compose correctly rejects a missing database password. Tests and live deployment were not run.
+- Added a dedicated Freshdesk setup guide covering agent API-key permissions, HTTPS origin, indexed and excluded articles, public-folder visibility, pagination, rate limits, and first-sync monitoring; linked it from the connector matrix.
+- Added a Backstage Software Catalog connector using the documented `entities/by-query` API, cursor pagination, optional Bearer auth, bounded page traversal, namespace allowlisting, field selection, curated entity mapping, stable entity refs, and typed auth/rate-limit/HTTP/pagination errors. It requests selected Catalog fields only; TechDocs page content remains out of scope.
+- Wired Backstage base URL/token/namespaces/interval through validated config, startup scheduling, Compose, `.env.example`, Flyway V12, README, and a source-specific setup guide. Implementation follows the official Backstage Catalog API query, `fields`, cursor, and auth documentation.
+- Backstage verification: Kotlin compilation, ktlint, detekt, Compose configuration with a validation-only DB secret, and `git diff --check` passed. No tests, live Backstage sync, or migration execution were run.
+- Extended Backstage ingestion with opt-in TechDocs HTML indexing, disabled by default. Each page receives a stable identifier and Backstage URL; HTML extraction removes navigation and scripts/styles, while per-entity, per-sync, and per-page limits constrain ingestion. Added typed TechDocs metadata and oversized-page errors, wired the environment setting, and updated connector and setup documentation.
+- TechDocs implementation was checked against the official Backstage TechDocs architecture and metadata/static-page API. Kotlin compilation, ktlint, detekt, Compose configuration with a validation-only database password, and `git diff --check` passed. Tests, live Backstage API sync, and migration execution were not run; the repository has no Sonar scanner configuration.
+- Added individual setup guides for Jira, Confluence, Notion, GitBook, GitHub, GitLab, Linear, Zendesk, and Intercom, and created an index for all implemented remote connectors. Linked the guides from the README matrix, marked the fully implemented developer-platform and support tiers complete, and marked Docker/docs complete now that every implemented connector has setup guidance.
+- Documentation continuation verification: checked the referenced guide and README section targets, and `git diff --check` passed. No application code changed in this documentation-only continuation; no tests or builds were run.
+- Removed runtime-clock fallbacks from Jira, Confluence, Notion, GitBook, and GitHub timestamp mapping. Missing or malformed source timestamps now map deterministically to `Instant.EPOCH`, matching the connector guide and avoiding time-dependent document mapping.
+- Timestamp-mapping verification: `:backend:compileKotlin`, `:backend:ktlintCheck`, and `:backend:detekt` passed; `git diff --check` passed. Tests and live source syncs were not run.
+- Captured the new product direction in `docs/enterprise-readiness.md`: UI-managed connector credentials and activation, organization-hosted single-workspace deployments, separate model-provider configuration, employee SSO, role-based admin controls, audit, recovery, and provisioning. Explicitly distinguished OIDC/SAML employee authentication from SCIM account lifecycle management and identified that the current Sources panel is status/sync-only and uses startup environment configuration.
+- Updated the README privacy description and tagline to state that local model endpoints keep prompts/context in the deployment boundary while remote model providers receive request context, and to list direct OpenAI/Claude adapters, UI connector management, and enterprise SSO/provisioning as future work. Linked the enterprise readiness direction.
+- Product-direction verification: checked the current admin routes, connector runtime construction, and UI against the new document. Protocol references include OpenID Foundation, Ping Identity, SailPoint, and OpenAI primary documentation. No implementation code or tests changed in this turn.

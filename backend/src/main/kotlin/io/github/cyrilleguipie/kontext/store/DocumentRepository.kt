@@ -26,9 +26,81 @@ data class DocumentStats(
     val bySource: List<SourceStats>,
 )
 
+data class ConnectorSyncRecord(
+    val connectorId: String,
+    val source: String,
+    val running: Boolean,
+    val lastAttemptAt: Instant?,
+    val lastSuccessAt: Instant?,
+    val indexed: Int?,
+    val deleted: Int?,
+    val error: String?,
+)
+
 class DocumentRepository(private val dataSource: DataSource) {
     private val logger = LoggerFactory.getLogger(DocumentRepository::class.java)
     private val json = Json { ignoreUnknownKeys = true }
+
+    fun saveConnectorSyncRecord(record: ConnectorSyncRecord) {
+        val sql =
+            """
+            INSERT INTO connector_sync_status (
+                connector_id, source, running, last_attempt_at, last_success_at,
+                indexed, deleted, error, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, now())
+            ON CONFLICT (connector_id) DO UPDATE SET
+                source = EXCLUDED.source,
+                running = EXCLUDED.running,
+                last_attempt_at = EXCLUDED.last_attempt_at,
+                last_success_at = EXCLUDED.last_success_at,
+                indexed = EXCLUDED.indexed,
+                deleted = EXCLUDED.deleted,
+                error = EXCLUDED.error,
+                updated_at = now()
+            """.trimIndent()
+        dataSource.connection.use { conn ->
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, record.connectorId)
+                stmt.setString(2, record.source)
+                stmt.setBoolean(3, record.running)
+                stmt.setTimestamp(4, record.lastAttemptAt?.let(Timestamp::from))
+                stmt.setTimestamp(5, record.lastSuccessAt?.let(Timestamp::from))
+                record.indexed?.let { stmt.setInt(6, it) } ?: stmt.setNull(6, java.sql.Types.INTEGER)
+                record.deleted?.let { stmt.setInt(7, it) } ?: stmt.setNull(7, java.sql.Types.INTEGER)
+                stmt.setString(8, record.error)
+                stmt.executeUpdate()
+            }
+        }
+    }
+
+    fun getConnectorSyncRecord(connectorId: String): ConnectorSyncRecord? {
+        val sql =
+            """
+            SELECT connector_id, source, running, last_attempt_at, last_success_at, indexed, deleted, error
+            FROM connector_sync_status WHERE connector_id = ?
+            """.trimIndent()
+        dataSource.connection.use { conn ->
+            conn.prepareStatement(sql).use { stmt ->
+                stmt.setString(1, connectorId)
+                return stmt.executeQuery().use { resultSet -> resultSet.toConnectorSyncRecordIfPresent() }
+            }
+        }
+    }
+
+    private fun ResultSet.toConnectorSyncRecord() =
+        ConnectorSyncRecord(
+            connectorId = getString("connector_id"),
+            source = getString("source"),
+            running = getBoolean("running"),
+            lastAttemptAt = getTimestamp("last_attempt_at")?.toInstant(),
+            lastSuccessAt = getTimestamp("last_success_at")?.toInstant(),
+            indexed = getInt("indexed").let { if (wasNull()) null else it },
+            deleted = getInt("deleted").let { if (wasNull()) null else it },
+            error = getString("error"),
+        )
+
+    private fun ResultSet.toConnectorSyncRecordIfPresent(): ConnectorSyncRecord? =
+        if (next()) toConnectorSyncRecord() else null
 
     fun upsertDocument(document: Document): Long {
         dataSource.connection.use { conn ->
@@ -67,6 +139,32 @@ class DocumentRepository(private val dataSource: DataSource) {
             val rs = stmt.executeQuery()
             rs.next()
             return rs.getLong(1)
+        }
+    }
+
+    /** Persists document metadata and its chunks as one transaction. */
+    fun saveDocumentWithChunks(
+        document: Document,
+        chunks: List<Chunk>,
+    ): Long {
+        dataSource.connection.use { conn ->
+            val previousAutoCommit = conn.autoCommit
+            conn.autoCommit = false
+            var committed = false
+            try {
+                val documentId = upsertDocument(conn, document)
+                conn.prepareStatement("DELETE FROM chunk WHERE document_id = ?").use { stmt ->
+                    stmt.setLong(1, documentId)
+                    stmt.executeUpdate()
+                }
+                if (chunks.isNotEmpty()) insertChunkBatch(conn, documentId, chunks)
+                conn.commit()
+                committed = true
+                return documentId
+            } finally {
+                if (!committed) conn.rollback()
+                conn.autoCommit = previousAutoCommit
+            }
         }
     }
 

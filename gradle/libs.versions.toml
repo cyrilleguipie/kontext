@@ -9,6 +9,7 @@ pgvector = "0.1.6"
 flyway = "11.3.4"
 typesafe-config = "1.4.3"
 jsoup = "1.19.1"
+tika = "3.3.3"
 logback = "1.5.17"
 logstash-encoder = "8.0"
 testcontainers = "1.20.6"
@@ -59,6 +60,9 @@ typesafe-config = { module = "com.typesafe:config", version.ref = "typesafe-conf
 
 # HTML Parsing
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+tika-core = { module = "org.apache.tika:tika-core", version.ref = "tika" }
+tika-parser-microsoft = { module = "org.apache.tika:tika-parser-microsoft-module", version.ref = "tika" }
+tika-parser-pdf = { module = "org.apache.tika:tika-parser-pdf-module", version.ref = "tika" }
 
 # Logging
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }

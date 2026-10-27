@@ -51,6 +51,9 @@ dependencies {
     // Config & Utilities
     implementation(libs.typesafe.config)
     implementation(libs.jsoup)
+    implementation(libs.tika.core)
+    implementation(libs.tika.parser.microsoft)
+    implementation(libs.tika.parser.pdf)
 
     // Logging
     implementation(libs.logback.classic)

@@ -6,6 +6,17 @@ import java.time.Instant
 enum class DocumentSource(val dbValue: String) {
     JIRA("jira"),
     CONFLUENCE("confluence"),
+    MANUAL("manual"),
+    FILES("files"),
+    NOTION("notion"),
+    GITBOOK("gitbook"),
+    GITHUB("github"),
+    GITLAB("gitlab"),
+    LINEAR("linear"),
+    ZENDESK("zendesk"),
+    INTERCOM("intercom"),
+    FRESHDESK("freshdesk"),
+    BACKSTAGE("backstage"),
     ;
 
     companion object {

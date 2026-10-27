@@ -58,6 +58,139 @@ sealed interface KontextError {
         data class Network(override val message: String, val cause: Throwable? = null) : AtlassianError
     }
 
+    sealed interface GitLabError : KontextError {
+        data object Authentication : GitLabError {
+            override val message: String = "GitLab authentication failed; check the configured access token and scope"
+        }
+
+        data class RateLimited(val retryAfter: String?) : GitLabError {
+            override val message: String = "GitLab rate limit reached${retryAfter?.let { "; retry after $it" } ?: ""}"
+        }
+
+        data class HttpFailure(val statusCode: Int, val detail: String) : GitLabError {
+            override val message: String = "GitLab API returned HTTP $statusCode: $detail"
+        }
+    }
+
+    sealed interface LinearError : KontextError {
+        data object Authentication : LinearError {
+            override val message: String = "Linear authentication failed; check the configured personal API key"
+        }
+
+        data class ApiFailure(override val message: String) : LinearError
+
+        data object Pagination : LinearError {
+            override val message: String = "Linear pagination returned an incomplete or repeated cursor"
+        }
+    }
+
+    sealed interface ZendeskError : KontextError {
+        data object Authentication : ZendeskError {
+            override val message: String = "Zendesk authentication failed; check the account email and API token"
+        }
+
+        data class RateLimited(val retryAfterSeconds: String?) : ZendeskError {
+            override val message: String =
+                "Zendesk rate limit reached" +
+                    (retryAfterSeconds?.let { "; retry after $it seconds" } ?: "")
+        }
+
+        data class HttpFailure(val statusCode: Int, val detail: String) : ZendeskError {
+            override val message: String = "Zendesk API returned HTTP $statusCode: $detail"
+        }
+
+        data object Pagination : ZendeskError {
+            override val message: String = "Zendesk pagination returned a missing or repeated next link"
+        }
+    }
+
+    sealed interface IntercomError : KontextError {
+        data object Authentication : IntercomError {
+            override val message: String =
+                "Intercom authentication failed; check the access token and read_articles scope"
+        }
+
+        data class RateLimited(val retryAfterSeconds: String?) : IntercomError {
+            override val message: String =
+                "Intercom rate limit reached" +
+                    (retryAfterSeconds?.let { "; retry after $it seconds" } ?: "")
+        }
+
+        data class HttpFailure(val statusCode: Int, val detail: String) : IntercomError {
+            override val message: String = "Intercom API returned HTTP $statusCode: $detail"
+        }
+
+        data object Pagination : IntercomError {
+            override val message: String = "Intercom pagination returned invalid or excessive page metadata"
+        }
+    }
+
+    sealed interface FreshdeskError : KontextError {
+        data object Authentication : FreshdeskError {
+            override val message: String = "Freshdesk authentication failed; check the API key and agent permissions"
+        }
+
+        data class RateLimited(val retryAfterSeconds: String?) : FreshdeskError {
+            override val message: String =
+                "Freshdesk rate limit reached" + (retryAfterSeconds?.let { "; retry after $it seconds" } ?: "")
+        }
+
+        data class HttpFailure(val statusCode: Int, val detail: String) : FreshdeskError {
+            override val message: String = "Freshdesk API returned HTTP $statusCode: $detail"
+        }
+
+        data object Pagination : FreshdeskError {
+            override val message: String = "Freshdesk pagination returned invalid or excessive page metadata"
+        }
+    }
+
+    sealed interface BackstageError : KontextError {
+        data object Authentication : BackstageError {
+            override val message = "Backstage authentication failed; check the token and catalog read permissions"
+        }
+
+        data class RateLimited(val retryAfter: String?) : BackstageError {
+            override val message =
+                "Backstage rate limit reached" + (retryAfter?.let { "; retry after $it seconds" } ?: "")
+        }
+
+        data class HttpFailure(val statusCode: Int, val detail: String) : BackstageError {
+            override val message = "Backstage API returned HTTP $statusCode: $detail"
+        }
+
+        data object Pagination : BackstageError {
+            override val message = "Backstage catalog pagination returned an invalid or repeated cursor"
+        }
+
+        data object TechDocsMetadata : BackstageError {
+            override val message = "Backstage TechDocs metadata contains no safe HTML pages"
+        }
+
+        data class TechDocsPageTooLarge(val maxBytes: Int) : BackstageError {
+            override val message = "Backstage TechDocs page exceeds the configured $maxBytes byte limit"
+        }
+    }
+
+    sealed interface ConnectorConfigurationError : KontextError {
+        data class Invalid(val reason: String) : ConnectorConfigurationError {
+            override val message: String = reason
+        }
+
+        data object EncryptionUnavailable : ConnectorConfigurationError {
+            override val message: String =
+                "Connector settings require KONTEXT_SECRET_ENCRYPTION_KEY to be configured"
+        }
+
+        data object StoredConfigurationInvalid : ConnectorConfigurationError {
+            override val message: String =
+                "Stored connector settings cannot be decrypted; verify the secret encryption key"
+        }
+
+        data object PersistenceFailure : ConnectorConfigurationError {
+            override val message: String = "Connector settings could not be stored"
+        }
+    }
+
     class Exception(
         val error: KontextError,
         cause: Throwable? = null,

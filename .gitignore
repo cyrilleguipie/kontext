@@ -29,6 +29,11 @@ ui/.output/
 ui/.nuxt/
 ui/.nitro/
 ui/.cache/
+*.tsbuildinfo
+ui/vite.config.js
+ui/vite.config.d.ts
+knowledge/*
+!knowledge/.gitkeep
 
 # OS files
 .DS_Store
